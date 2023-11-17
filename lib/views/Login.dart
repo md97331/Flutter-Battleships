@@ -19,7 +19,7 @@ class _LoginState extends State<Login> {
       // Navigate to GamePage with the token
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => GamePage(token: response['access_token']),
+          builder: (context) => GamePage(token: response['access_token'], username: _usernameController.text),
         ),
       );
     } catch (e) {
@@ -60,7 +60,7 @@ class _LoginState extends State<Login> {
         // Navigate to the game page if registration is successful
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-              builder: (context) => GamePage(token: response['access_token'])),
+              builder: (context) => GamePage(token: response['access_token'], username: _usernameController.text)),
         );
       } catch (e) {
         // More detailed error handling

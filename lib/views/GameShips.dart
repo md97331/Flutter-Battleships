@@ -18,78 +18,6 @@ class _GameShipsState extends State<GameShips> {
   final int gridCount = 5; // Number of playable grid cells
   final double rightPadding = 16.0; // Right padding for the grid
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Place Ships'),
-      ),
-      body: Padding(
-        padding: EdgeInsets.only(
-            right: rightPadding), // Add right padding to the whole body
-        child: Column(
-          children: <Widget>[
-            Expanded(
-              child: GridView.builder(
-                itemCount:
-                    (gridCount + 1) * (gridCount + 1), // Adjusted for labels
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: gridCount + 1,
-                ),
-                itemBuilder: (context, index) {
-                  // Determine the row and column number
-                  int row = index ~/ (gridCount + 1);
-                  int col = index % (gridCount + 1);
-
-                  if (row == 0 && col > 0) {
-                    // Top labels (1-5)
-                    return Center(child: Text(col.toString()));
-                  } else if (col == 0 && row > 0) {
-                    // Side labels (A-E)
-                    return Center(child: Text(String.fromCharCode(64 + row)));
-                  } else if (row > 0 && col > 0) {
-                    // Playable cells
-                    final String cellLabel =
-                        String.fromCharCode(64 + row) + col.toString();
-                    final bool isSelected = selectedShips.contains(cellLabel);
-                    return Card(
-                      color: isSelected ? Colors.blue : Colors.white,
-                      child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            if (isSelected) {
-                              selectedShips.remove(cellLabel);
-                            } else if (selectedShips.length < 5) {
-                              selectedShips.add(cellLabel);
-                            }
-                          });
-                        },
-                      ),
-                    );
-                  } else {
-                    // This is the top-left corner, which should be empty
-                    return Container();
-                  }
-                },
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(8.0),
-              child: ElevatedButton(
-                onPressed: selectedShips.length == 5 ? _submitShips : null,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: Size(
-                      double.infinity, 50), // Ensures the button is full width
-                ),
-                child: Text('Submit'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _submitShips({bool aiGame = false}) async {
     try {
       // Log selected ships for debugging
@@ -116,5 +44,93 @@ class _GameShipsState extends State<GameShips> {
         SnackBar(content: Text('Failed to start game: $e')),
       );
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Place Ships'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.only(right: rightPadding),
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            var maxWidth = constraints.maxWidth;
+            var maxHeight = constraints.maxHeight;
+            var gridSize = maxWidth < maxHeight ? maxWidth : maxHeight;
+
+            return Column(
+              children: [
+                Expanded(
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: Container(
+                        width: gridSize,
+                        height: gridSize,
+                        child: GridView.builder(
+                          physics: NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 6,
+                            childAspectRatio: 1,
+                          ),
+                          itemCount: 36,
+                          itemBuilder: (context, index) {
+                            int row = index ~/ 6;
+                            int col = index % 6;
+
+                            if (row == 0 || col == 0) {
+                              return Center(
+                                child: Text(row == 0 && col > 0
+                                    ? col.toString()
+                                    : (col == 0 && row > 0
+                                        ? String.fromCharCode(65 + row - 1)
+                                        : '')),
+                              );
+                            } else {
+                              String cellLabel =
+                                  '${String.fromCharCode(65 + row - 1)}$col';
+                              bool isSelected =
+                                  selectedShips.contains(cellLabel);
+
+                              return Card(
+                                color: isSelected ? Colors.blue : Colors.white,
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      if (isSelected) {
+                                        selectedShips.remove(cellLabel);
+                                      } else if (selectedShips.length < 5) {
+                                        selectedShips.add(cellLabel);
+                                      }
+                                    });
+                                  },
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  child: ElevatedButton(
+                    onPressed: selectedShips.length == 5 ? _submitShips : null,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: Size(double.infinity, 50),
+                    ),
+                    child: Text('Submit'),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
   }
 }

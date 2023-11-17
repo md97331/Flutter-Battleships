@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/Game.dart';
 import '../services/APIservice.dart';
+import 'dart:math';
 
 class GameView extends StatefulWidget {
   final Game game;
   final String token;
 
-  GameView({Key? key, required this.game, required this.token})
-      : super(key: key);
+  GameView({Key? key, required this.game, required this.token}) : super(key: key);
 
   @override
   _GameViewState createState() => _GameViewState();
@@ -16,12 +16,25 @@ class GameView extends StatefulWidget {
 class _GameViewState extends State<GameView> {
   late Game _currgame;
   final ApiService _apiService = ApiService();
-  final int gridCount = 5; // Set grid count for a 5x5 board
 
   @override
   void initState() {
     super.initState();
-    _currgame = widget.game; // Initialize the current game
+    _currgame = widget.game;
+    _fetchGameDetails();
+  }
+
+  void _fetchGameDetails() async {
+    try {
+      final response =
+          await _apiService.getGameDetails(_currgame.id, widget.token);
+      setState(() {
+        _currgame = Game.fromJson(response);
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to fetch game details: $e')));
+    }
   }
 
   void _playShot(String shot) async {
@@ -35,19 +48,16 @@ class _GameViewState extends State<GameView> {
       final response =
           await _apiService.playShot(_currgame.id, shot, widget.token);
       if (response['message'] != null) {
-        // Handle the server response
         bool sunkShip = response['sunk_ship'];
         bool won = response['won'];
 
         setState(() {
-          // Update the game state based on the response
           if (sunkShip) {
             _currgame.sunk.add(shot);
           } else {
             _currgame.shots.add(shot);
           }
           if (won) {
-            // Handle the win condition, maybe navigate to a win screen or show a dialog
             showDialog(
               context: context,
               builder: (BuildContext context) {
@@ -58,8 +68,7 @@ class _GameViewState extends State<GameView> {
                     TextButton(
                       child: Text('OK'),
                       onPressed: () {
-                        Navigator.of(context).pop(); // Close the dialog
-                        // Add any additional logic if needed
+                        Navigator.of(context).pop();
                       },
                     ),
                   ],
@@ -67,7 +76,6 @@ class _GameViewState extends State<GameView> {
               },
             );
           }
-          // Switch turns
           _currgame.turn = _currgame.turn == 1 ? 2 : 1;
         });
       }
@@ -83,63 +91,111 @@ class _GameViewState extends State<GameView> {
 
   @override
   Widget build(BuildContext context) {
+    String title = 'Game #${_currgame.id}';
+    if (_currgame.status == 1 || _currgame.status == 2) {
+      String winner = _currgame.status == 1 ? _currgame.player1 : _currgame.player2;
+      title = '$winner won!';
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Game #${_currgame.id}'),
+        title: Text(title),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pop(true);
+          },
+        ),
       ),
-      body: Column(
-        children: [
-          AspectRatio(
-            aspectRatio: 1, // To ensure the board is always square
-            child: GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: gridCount + 1, // Plus one for labels
-              ),
-              itemCount:
-                  (gridCount + 1) * (gridCount + 1), // Account for the labels
-              itemBuilder: (context, index) {
-                // Create labels for columns and rows
-                if (index % (gridCount + 1) == 0) {
-                  return Center(
-                      child: Text(String.fromCharCode(
-                          65 + index ~/ (gridCount + 1) - 1)));
-                } else if (index < (gridCount + 1)) {
-                  return Center(
-                      child: Text((index % (gridCount + 1)).toString()));
-                } else {
-                  // Calculate the actual row and column for the ships
-                  int row =
-                      (index ~/ (gridCount + 1)) - 1; // Adjusted for labels
-                  int col = index % (gridCount + 1);
-                  String cellLabel = '${String.fromCharCode(65 + row)}$col';
-                  bool isShip = _currgame.ships.contains(cellLabel);
-                  bool isHit = _currgame.sunk.contains(cellLabel);
-                  bool isMissed = _currgame.shots.contains(cellLabel) && !isHit;
+      body: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          var gridSize = min(constraints.maxWidth, constraints.maxHeight);
 
-                  return Card(
-                    color: isHit
-                        ? Colors.red
-                        : (isMissed
-                            ? Colors.grey
-                            : (isShip ? Colors.blueAccent : Colors.white)),
-                    child: InkWell(
-                      onTap: () => _playShot(cellLabel),
-                      child: Center(
-                        child: Text(
-                          isShip
-                              ? '🚢'
-                              : (isHit ? '💥' : (isMissed ? '💣' : '')),
-                          style: TextStyle(fontSize: 24),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-              },
+          return Center(
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: Container(
+                width: gridSize,
+                height: gridSize,
+                child: GridView.builder(
+                  physics: NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 6,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: 36,
+                  itemBuilder: (context, index) {
+                    int row = index ~/ 6;
+                    int col = index % 6;
+
+                    if (row == 0 || col == 0) {
+                      return _buildLabelCell(row, col);
+                    } else {
+                      return _buildGameCell(row, col);
+                    }
+                  },
+                ),
+              ),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
+  }
+
+  Widget _buildLabelCell(int row, int col) {
+    return Center(
+      child: Text(row == 0 && col > 0
+          ? col.toString()
+          : (col == 0 && row > 0
+              ? String.fromCharCode(65 + row - 1)
+              : '')),
+    );
+  }
+
+  Widget _buildGameCell(int row, int col) {
+    String cellLabel = '${String.fromCharCode(65 + row - 1)}$col';
+    bool isShip = _currgame.ships.contains(cellLabel);
+    bool isHit = _currgame.sunk.contains(cellLabel);
+    bool isMissed = _currgame.shots.contains(cellLabel) && !isHit;
+    bool isPlayed = _currgame.shots.contains(cellLabel);
+
+    String emoji = '';
+    if (isShip && isHit) {
+      emoji = '💥🚢'; // Hit on own ship
+    } else if (isShip) {
+      emoji = '🚢'; // Own ship
+    } else if (isHit) {
+      emoji = '💥'; // Hit on opponent's ship
+    } else if (isMissed) {
+      emoji = '🌊'; // Missed shot (bubble emoji)
+    }
+
+    return Card(
+      color: _getCellColor(isHit, isMissed, isShip),
+      child: InkWell(
+        onTap: isPlayed ? null : () => _playShot(cellLabel),
+        child: Center(
+          child: Text(
+            emoji,
+            style: TextStyle(fontSize: 24),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getCellColor(bool isHit, bool isMissed, bool isShip) {
+    if (isHit && isShip) {
+      return Colors.red[300]!;
+    } else if (isHit) {
+      return Colors.red;
+    } else if (isMissed) {
+      return Colors.blue[200]!;
+    } else if (isShip) {
+      return Colors.blueAccent;
+    } else {
+      return Colors.white;
+    }
   }
 }

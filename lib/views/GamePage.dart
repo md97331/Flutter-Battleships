@@ -16,14 +16,28 @@ class GamePage extends StatefulWidget {
   _GamePageState createState() => _GamePageState();
 }
 
-class _GamePageState extends State<GamePage> {
+class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   final ApiService _apiService = ApiService();
   List<Game> activeGames = [];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fetchActiveGames();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  } 
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _fetchActiveGames();
+    }
   }
 
   void _fetchActiveGames() async {
@@ -56,12 +70,14 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _playAgainstAI(String aiType) async {
-    await Navigator.of(context).push(
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => GameShips(token: widget.token, aiType: aiType),
       ),
-    );  
-    _fetchActiveGames();
+    );
+    if (result != null) {
+      _fetchActiveGames();
+    }
   }
 
   void _startNewGameWithAI() async {
@@ -73,7 +89,7 @@ class _GamePageState extends State<GamePage> {
           title: Text('Select AI Difficulty'),
           content: SingleChildScrollView(
             child: ListBody(
-              children: <String>['random', 'perfect', 'one ship (A1)']
+              children: <String>['random', 'perfect', 'oneship']
                   .map((String aiType) {
                 return GestureDetector(
                   onTap: () => Navigator.of(context).pop(aiType),
@@ -97,12 +113,14 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _startNewGame() async {
-    await Navigator.of(context).push(
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => GameShips(token: widget.token, aiType: null),
       ),
     );
-    _fetchActiveGames();
+    if (result != null) {
+      _fetchActiveGames();
+    }
   }
 
   void _logout() async {
@@ -156,12 +174,17 @@ class _GamePageState extends State<GamePage> {
             ),
             ListTile(
               title: Text('New game'),
-              onTap: _startNewGame,
+              onTap: () {
+                Navigator.pop(context);
+                _startNewGame();
+              },
             ),
             ListTile(
-              title: Text('New game (AI)'),
-              onTap: _startNewGameWithAI,
-            ),
+                title: Text('New game (AI)'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _startNewGameWithAI();
+                }),
             ListTile(
               title: Text('Show completed games'),
               onTap: () {
@@ -220,11 +243,13 @@ class _GamePageState extends State<GamePage> {
     if (game.status != 0) {
       Navigator.of(context)
           .push(
-            MaterialPageRoute(
-              builder: (context) => GameView(game: game, token: widget.token),
-            ),
-          )
-          .then((value) => _fetchActiveGames());
+        MaterialPageRoute(
+          builder: (context) => GameView(game: game, token: widget.token),
+        ),
+      )
+          .then((_) {
+        _fetchActiveGames();
+      });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Finding a match...')),

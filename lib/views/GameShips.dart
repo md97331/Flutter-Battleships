@@ -41,6 +41,7 @@ class _GameShipsState extends State<GameShips> {
       } else {
         // If the game is not matched, pop the current screen
         Navigator.of(context).pop();
+        
       }
     } catch (e) {
       // Handle any errors here

@@ -27,6 +27,7 @@ class ApiService {
     print('Response body: ${response.body}');
 
     if (response.statusCode == 200) {
+      print(response.body);
       return jsonDecode(response.body);
     } else {
       // Parse the error message from the API response if available
@@ -60,7 +61,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      print(jsonDecode(response.body));
+      print(response.body);
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to retrieve games');
@@ -69,6 +70,12 @@ class ApiService {
 
   Future<Map<String, dynamic>> startGame(List<String> ships, String accessToken,
       {String? ai}) async {
+        String? aitype = ai;
+    if (ai == null) {
+      aitype = null;
+    } else {
+      aitype = ai;
+    }
     final response = await http.post(
       Uri.parse('$baseUrl/games'),
       headers: {
@@ -77,11 +84,12 @@ class ApiService {
       },
       body: jsonEncode({
         'ships': ships,
-        if (ai != null) 'ai': ai,
+        'ai': aitype,
       }),
     );
 
     if (response.statusCode == 200) {
+      print(response.body);
       return jsonDecode(response.body);
     } else {
       print('Failed to start game: ${response.statusCode}');
@@ -104,6 +112,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
+      print(response.body);
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to get game details');
@@ -120,9 +129,9 @@ class ApiService {
       },
       body: jsonEncode({'shot': shot}),
     );
-    print(response.body);
 
     if (response.statusCode == 200) {
+      print(response.body);
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to play shot');
@@ -140,6 +149,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
+      print(response.body);
       return jsonDecode(response.body);
     } else {
       print(response.body);

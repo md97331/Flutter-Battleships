@@ -5,8 +5,9 @@ import '../services/APIservice.dart';
 
 class GameShips extends StatefulWidget {
   final String token;
+  final String? aiType;
 
-  GameShips({Key? key, required this.token}) : super(key: key);
+  GameShips({Key? key, required this.token, required this.aiType}) : super(key: key);
 
   @override
   _GameShipsState createState() => _GameShipsState();
@@ -23,9 +24,13 @@ class _GameShipsState extends State<GameShips> {
       // Log selected ships for debugging
       print('Submitting ships: $selectedShips');
 
+      
+      final response = await _apiService.startGame(selectedShips, widget.token, ai: widget.aiType);
+      
+
       // Call API to start the game with the selected ships
-      final response = await _apiService.startGame(selectedShips, widget.token,
-          ai: aiGame ? 'random' : null);
+      // final response = await _apiService.startGame(selectedShips, widget.token,
+      //     ((widget.aiType=!null) ? widget.aiType : null));
 
       if (aiGame || response['matched']) {
         // If it's an AI game or the game is immediately matched, navigate to GameView

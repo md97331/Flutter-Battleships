@@ -55,27 +55,51 @@ class _GamePageState extends State<GamePage> {
     }
   }
 
-  void _playAgainstAI() async {
-    try {
-      final response =
-          await _apiService.startGame([], widget.token, ai: 'random');
-      Game game = Game.fromJson(response);
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => GameView(game: game, token: widget.token),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to start AI game: $e')),
-      );
+  void _playAgainstAI(String aiType) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => GameShips(token: widget.token, aiType: aiType),
+      ),
+    );  
+    _fetchActiveGames();
+  }
+
+  void _startNewGameWithAI() async {
+    // Show AI options to the user
+    final String? selectedAI = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select AI Difficulty'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <String>['random', 'perfect', 'one ship (A1)']
+                  .map((String aiType) {
+                return GestureDetector(
+                  onTap: () => Navigator.of(context).pop(aiType),
+                  child: Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text(aiType.toUpperCase()),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+
+    // If an AI type was selected, start a game with that AI
+    if (selectedAI != null) {
+      print("selected AI: $selectedAI");
+      _playAgainstAI(selectedAI);
     }
   }
 
   void _startNewGame() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => GameShips(token: widget.token),
+        builder: (context) => GameShips(token: widget.token, aiType: null),
       ),
     );
     _fetchActiveGames();
@@ -136,7 +160,7 @@ class _GamePageState extends State<GamePage> {
             ),
             ListTile(
               title: Text('New game (AI)'),
-              onTap: _playAgainstAI,
+              onTap: _startNewGameWithAI,
             ),
             ListTile(
               title: Text('Show completed games'),

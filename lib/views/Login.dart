@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/APIservice.dart';
-import '../views/GamePage.dart'; // Adjust the import path
+import '../views/GamePage.dart';
+import '../services/SessionManager.dart';
 
 class Login extends StatefulWidget {
   @override
@@ -16,10 +17,13 @@ class _LoginState extends State<Login> {
     try {
       final response = await _apiService.login(
           _usernameController.text, _passwordController.text);
+      await SessionManager.setSessionToken(response['access_token']);
+      await SessionManager.setUsername(_usernameController.text);
+
       // Navigate to GamePage with the token
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => GamePage(token: response['access_token'], username: _usernameController.text),
+          builder: (context) => GamePage(),
         ),
       );
     } catch (e) {
@@ -58,9 +62,11 @@ class _LoginState extends State<Login> {
         final response = await _apiService.register(
             _usernameController.text, _passwordController.text);
         // Navigate to the game page if registration is successful
+        await SessionManager.setSessionToken(response['access_token']);
+        await SessionManager.setUsername(_usernameController.text);
+
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-              builder: (context) => GamePage(token: response['access_token'], username: _usernameController.text)),
+          MaterialPageRoute(builder: (context) => GamePage()),
         );
       } catch (e) {
         // More detailed error handling

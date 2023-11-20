@@ -1,3 +1,4 @@
+import 'package:battleships/services/SessionManager.dart';
 import 'package:flutter/material.dart';
 import '../models/Game.dart';
 import '../services/APIservice.dart';
@@ -6,10 +7,9 @@ import 'GameView.dart';
 import '../views/CompletedGamePage.dart';
 
 class GamePage extends StatefulWidget {
-  String token;
-  String username;
+ 
 
-  GamePage({Key? key, required this.token, required this.username})
+  GamePage({Key? key})
       : super(key: key);
 
   @override
@@ -19,12 +19,21 @@ class GamePage extends StatefulWidget {
 class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   final ApiService _apiService = ApiService();
   List<Game> activeGames = [];
+  String token = '';
+  String username = '';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _initializeSession();
+  }
+
+  void _initializeSession() async {
+    token = await SessionManager.getSessionToken();
+    username = await SessionManager.getUsername();
     _fetchActiveGames();
+
   }
 
   @override
@@ -42,7 +51,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   void _fetchActiveGames() async {
     try {
-      final response = await _apiService.getGames(widget.token);
+      final response = await _apiService.getGames(token);
       if (response['games'] != null) {
         var gamesList = List<Map<String, dynamic>>.from(response['games']);
         var filteredGames = gamesList.where((gameMap) {
@@ -51,10 +60,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
               game.status == 3 || // Active game
               (game.status == 1 &&
                   game.player1 ==
-                      widget.token) || // Player1 won and it's the user
+                      token) || // Player1 won and it's the user
               (game.status == 2 &&
                   game.player2 ==
-                      widget.token); // Player2 won and it's the user
+                      token); // Player2 won and it's the user
         }).toList();
 
         setState(() {
@@ -72,7 +81,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   void _playAgainstAI(String aiType) async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => GameShips(token: widget.token, aiType: aiType),
+        builder: (context) => GameShips(aiType: aiType),
       ),
     );
     if (result != null) {
@@ -115,7 +124,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   void _startNewGame() async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => GameShips(token: widget.token, aiType: null),
+        builder: (context) => GameShips(aiType: null),
       ),
     );
     if (result != null) {
@@ -124,7 +133,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   }
 
   void _logout() async {
-    widget.token = '';
+    await SessionManager.clearSession();
     Navigator.of(context).pushReplacementNamed('/login');
   }
 
@@ -162,7 +171,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                     style: TextStyle(color: Colors.white, fontSize: 16.0),
                   ),
                   Text(
-                    '${widget.username}!', // Use the username passed to the widget
+                    '${username}!', // Use the username passed to the widget
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20.0,
@@ -191,7 +200,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) =>
-                        CompletedGamesPage(token: widget.token),
+                        CompletedGamesPage(token: token),
                   ),
                 );
               },
@@ -244,7 +253,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       Navigator.of(context)
           .push(
         MaterialPageRoute(
-          builder: (context) => GameView(game: game, token: widget.token),
+          builder: (context) => GameView(game: game, token: token),
         ),
       )
           .then((_) {
@@ -259,7 +268,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   void _onGameLongPress(Game game) async {
     try {
-      await _apiService.cancelGame(game.id, widget.token);
+      await _apiService.cancelGame(game.id, token);
       _fetchActiveGames();
     } catch (e) {
       if (game.status == 1 || game.status == 2) {
